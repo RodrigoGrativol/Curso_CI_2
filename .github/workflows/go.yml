@@ -2,18 +2,33 @@ name: Go
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ "*" ]
   pull_request:
-    branches: [ '*' ]
+    branches: [ "*" ]
 
 jobs:
-
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go_version: ['1.18', '1.17']   # removido >=1.18 (inválido)
-        os: ['ubuntu-latest', 'ubuntu-18.04']
+        go_version: ["1.17", "1.18"]
+        os: ["ubuntu-latest"]   # ❗ REMOVIDO ubuntu-18.04 (incompatível)
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: root
+          POSTGRES_DB: root
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - uses: actions/checkout@v3
 
@@ -22,27 +37,17 @@ jobs:
         with:
           go-version: ${{ matrix.go_version }}
 
-      - name: Install Docker Compose
-        run: |
-          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-      
-      - name: Build-DB
-        run: docker compose build
-      
-      - name: Create-DB
-        run: docker compose up -d
-
-      - name: Test
-        run: go test -v main_test.go 
-
+      - name: Run tests
+        env:
+          DB_HOST: localhost
+          DB_USER: root
+          DB_PASSWORD: root
+          DB_NAME: root
+        run: go test ./... -v
 
   build:
     needs: test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: ['ubuntu-latest', 'ubuntu-18.04']
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
