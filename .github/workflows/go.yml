@@ -2,9 +2,9 @@ name: Go
 
 on:
   push:
-    branches: [ '*' ]
+    branches: [ "*" ]
   pull_request:
-    branches: [ '*' ]
+    branches: [ "*" ]
 
 jobs:
 
@@ -14,6 +14,7 @@ jobs:
       matrix:
         go_version: ['1.18', '1.17']
         os: ['ubuntu-latest']
+
     steps:
     - uses: actions/checkout@v3
 
@@ -26,40 +27,33 @@ jobs:
       run: docker compose build
 
     - name: Start services
-      run: docker compose up -d
+      run: docker compose up -d db
 
-    # Aguarda o PostgreSQL ficar pronto
-    - name: Wait for DB
+    - name: Wait for DB (healthcheck)
       run: |
         echo "Aguardando PostgreSQL..."
-        until docker compose exec -T db pg_isready -U root; do
-            sleep 2
+        until [ "$(docker inspect --format='{{json .State.Health.Status}}' curso_ci_2-db-1)" = "\"healthy\"" ]; do
+          sleep 2
         done
 
-    # Executa os testes dentro do container App (caso você tenha um)
-    # Se não tiver container de App, executamos apenas no host,
-    # mas conectado à rede interna do compose.
     - name: Run tests
       env:
-        DB_HOST: db          # hostname do postgres no docker compose
+        DB_HOST: 127.0.0.1
         DB_USER: root
         DB_PASS: root
         DB_NAME: root
       run: |
         go test -v ./...
 
-  
   build:
     needs: test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: ['ubuntu-latest']
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Build
-      run: docker compose build
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: docker compose build
+
 
 
 
