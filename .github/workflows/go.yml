@@ -7,45 +7,43 @@ on:
     branches: [ "*" ]
 
 jobs:
-
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go_version: ['1.18', '1.17']
-        os: ['ubuntu-latest']
+        go_version: ["1.17", "1.18"]
+        os: ["ubuntu-latest"]   # ❗ REMOVIDO ubuntu-18.04 (incompatível)
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: root
+          POSTGRES_DB: root
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ matrix.go_version }}
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go_version }}
 
-    - name: Build containers
-      run: docker compose build
-
-    - name: Start PostgreSQL
-      run: docker compose up -d postgres
-
-    # Aguarda até o Postgres estar pronto
-    - name: Wait for PostgreSQL
-      run: |
-        echo "Aguardando PostgreSQL aceitar conexões..."
-        until docker compose exec -T postgres pg_isready -U root; do
-          sleep 2
-        done
-
-    - name: Run tests
-      env:
-        DB_HOST: 127.0.0.1   # conexão externa ao container, usa a porta publicada
-        DB_USER: root
-        DB_PASS: root
-        DB_NAME: root
-        DB_PORT: 5432
-      run: |
-        go test -v ./...
+      - name: Run tests
+        env:
+          DB_HOST: localhost
+          DB_USER: root
+          DB_PASSWORD: root
+          DB_NAME: root
+        run: go test ./... -v
 
   build:
     needs: test
@@ -53,9 +51,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
       - name: Build
         run: docker compose build
-
 
 
 
