@@ -26,22 +26,24 @@ jobs:
     - name: Build containers
       run: docker compose build
 
-    - name: Start services
-      run: docker compose up -d db
+    - name: Start PostgreSQL
+      run: docker compose up -d postgres
 
-    - name: Wait for DB (healthcheck)
+    # Aguarda até o Postgres estar pronto
+    - name: Wait for PostgreSQL
       run: |
-        echo "Aguardando PostgreSQL..."
-        until [ "$(docker inspect --format='{{json .State.Health.Status}}' curso_ci_2-db-1)" = "\"healthy\"" ]; do
+        echo "Aguardando PostgreSQL aceitar conexões..."
+        until docker compose exec -T postgres pg_isready -U root; do
           sleep 2
         done
 
     - name: Run tests
       env:
-        DB_HOST: 127.0.0.1
+        DB_HOST: 127.0.0.1   # conexão externa ao container, usa a porta publicada
         DB_USER: root
         DB_PASS: root
         DB_NAME: root
+        DB_PORT: 5432
       run: |
         go test -v ./...
 
