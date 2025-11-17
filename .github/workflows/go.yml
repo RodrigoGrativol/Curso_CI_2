@@ -65,7 +65,10 @@ jobs:
       - name: Build
         run: docker compose build
 
-
+  docker:
+    needs: build
+    uses: ./.github/workflows/Docker.yml
+  
 
 
 
