@@ -1,13 +1,15 @@
-FROM ubuntu:latest
-
-EXPOSE 8000
+FROM golang:1.21 AS builder
 
 WORKDIR /app
+COPY . .
 
-ENV HOST=localhost PORT=5432
+RUN go build -o main .
 
-ENV USER=root PASSWORD=root DBNAME=root
+# imagem final
+FROM ubuntu:latest
 
-COPY ./main main
+WORKDIR /app
+COPY --from=builder /app/main .
 
-CMD [ "./main" ]
+EXPOSE 8000
+CMD ["./main"]
